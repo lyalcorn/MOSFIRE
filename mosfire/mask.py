@@ -8,7 +8,7 @@ from astropy import coordinates as c
 from astropy import units as u
 from astropy.time import Time
 
-from .core import *
+from core import *
 
 
 def parallactic_angle(time, target, location):
@@ -235,6 +235,7 @@ class Mask(object):
                 raise
         # Parse XML root
         for child in self.xmlroot:
+            child_list=list(child.iter())[1:]
             if child.tag == 'maskDescription':
                 self.name = child.attrib.get('maskName')
                 self.priority = float(child.attrib.get('totalPriority'))
@@ -253,17 +254,48 @@ class Mask(object):
                         self.mascgenArguments[el.tag] = (el.text).strip()
                     else:
                         self.mascgenArguments[el.tag] = el.attrib
+                        grandchild_list=list(el.iter())[1:] #LYA original script was not reading in child parameters of mascgenArguments necessary to build a mask outside of MAGMA that can be read by MAGMA
+                        if len(grandchild_list)>0:
+                            for gc in grandchild_list:
+                                if gc.tag=='center':
+                                    self.centerArguments={}
+                                    if gc.attrib=={}:
+                                        self.centerArguments[gc.tag]=(gc.text).strip()
+                                    else:
+                                        self.centerArguments[gc.tag]=gc.attrib
+                                elif gc.tag=='steps':
+                                    self.stepArguments={}
+                                    if gc.attrib=={}:
+                                        self.stepArguments[gc.tag]=(gc.text).strip()
+                                    else:
+                                        self.stepArguments[gc.tag]=gc.attrib
+                                elif gc.tag=='directory':
+                                    self.dirArguments={}
+                                    if gc.attrib=={}:
+                                        self.dirArguments[gc.tag]=(gc.text).strip()
+                                    else:
+                                        self.dirArguments[gc.tag]=gc.attrib
+                                elif gc.tag=='maskScript':
+                                    self.scriptArguments={}
+                                    if gc.attrib=={}:
+                                        self.scriptArguments[gc.tag]=(gc.text).strip()
+                                    else:
+                                        self.scriptArguments[gc.tag]=gc.attrib
+                                    
             elif child.tag == 'mechanicalSlitConfig':
-                data = [el.attrib for el in child.getchildren()]
+                data = [el.attrib for el in child_list] # LYA previous call depreciated child.getchildren()]
                 self.slitpos = Table(names=('slitNumber', 'leftBarNumber',
                                      'rightBarNumber', 'leftBarPositionMM',
                                      'rightBarPositionMM', 'centerPositionArcsec',
                                      'slitWidthArcsec', 'target'),
                                      dtype=(int, int, int, float, float, float,
                                             float, np.dtype('U80')))
-                data = [self.slitpos.add_row(el.attrib) for el in child.getchildren()]
+                for el in child_list:
+                    self.slitpos.add_row(el.attrib)
+                #data = [self.slitpos.add_row(el.attrib) for el in child_list] # LYA previous call depreciated child.getchildren()]
+                data=self.slitpos
             elif child.tag == 'scienceSlitConfig':
-                data = [el.attrib for el in child.getchildren()]
+                data = [el.attrib for el in child_list] # LYA previous call depreciated  child.getchildren()]
                 try:
                     self.scienceTargets = Table(data)
                     if len(data) > 0:
@@ -275,8 +307,9 @@ class Mask(object):
                                                          Column(dec, name='DEC')])
                 except:
                     self.scienceTargets = Table()
+                data=self.scienceTargets
             elif child.tag == 'alignment':
-                data = [el.attrib for el in child.getchildren()]
+                data = [el.attrib for el in child_list] # LYA previous call depreciated  child.getchildren()]
                 try:
                     self.alignmentStars = Table(data)
                     if len(data) > 0:
@@ -288,9 +321,9 @@ class Mask(object):
                                                          Column(dec, name='DEC')])
                 except:
                     self.alignmentStars = Table()
+                data=self.alignmentStars
             else:
-                mask[child.tag] = [el.attrib for el in child.getchildren()]
-
+                mask[child.tag] = [el.attrib for el in child_list] # LYA previous call depreciated  child.getchildren()]
 
     def build_longslit(self, input):
         '''Build a longslit mask
