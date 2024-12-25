@@ -8,7 +8,7 @@ from astropy import coordinates as c
 from astropy import units as u
 from astropy.time import Time
 
-from core import *
+from .core import *
 
 
 def parallactic_angle(time, target, location):
